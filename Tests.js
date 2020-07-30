@@ -1,22 +1,31 @@
 
 function runAllTests(){
-  test_checkLogicGroups();
-  test_extractColumnsFromWhere()
-  test_selectData();
-  test_updateRow();
-  test_appendRow();
-  test_getColumnIdByName();
-  test_hashify();
-  test_groupedDataMap();
-  
-  runTest( test_performance );
-  runTest( test_SqlAbstract_performance );
-  runTest( test_SqlAbstract_update );
-  runTest( test_SqlAbstract_insert );
-  runTest( test_SqlAbstract_options );
-  runTest( test_createDB );
-  runTest( test_serializer );
-  runTest( test_select_serializer );
+  var tests = [
+    test_checkLogicGroups,
+    test_extractColumnsFromWhere,
+    test_selectData,
+    test_updateRow,
+    test_appendRow,
+    test_getColumnIdByName,
+    test_hashify,
+    test_groupedDataMap,
+    
+    test_SqlAbstract_insert,
+    test_SqlAbstract_update,
+    test_SqlAbstract_options,
+    test_serializer,
+    test_select_serializer,
+    test_select_serializer,
+    
+    test_dates,
+    
+//    test_performance,
+//    test_SqlAbstract_performance
+  ];
+
+  for (var n in tests){
+    runTest(tests[n]);
+  }
   
   return true;
 }
@@ -25,13 +34,17 @@ function runTest(func){
   try {
     return func();
   } catch(e) {
-    throw(func.name + " failed!");
+    var name = func.name;
+    var out = Utilities.formatString("Failed: '%s'", name);
+    Logger.log(out);
+    Logger.log(e);
+    throw(out);
   }
 }
 
 var ss;
-createTestSpreadsheet();
-
+var ssUrl = createTestSpreadsheet();
+Logger.log("Test spreadsheet: %s", ssUrl);
 
 function createTestSpreadsheet() {
   var files = DriveApp.getFilesByName('SQL Abstract - TEST');
@@ -50,6 +63,8 @@ function createTestSpreadsheet() {
     ss = SpreadsheetApp.create('SQL Abstract - TEST');
     initTestSpreadsheet(ss);
   }
+  
+  return ss.getUrl();
 }
 
 
@@ -69,8 +84,8 @@ function initTestSpreadsheet(ss){
     ss.insertSheet('testSelectData');
   }
   
-  if (!ss.getSheetByName('Arkusz1')){
-    var sheet = ss.insertSheet('Arkusz1');
+  if (!ss.getSheetByName('Big Table')){
+    var sheet = ss.insertSheet('Big Table');
     
     var date = new Date();
     
@@ -791,7 +806,7 @@ function test_updateRow(){
   testSheet.appendRow(['K1', 'K2', 'K3', 'K4', 'K5', 'K6']);
   testSheet.appendRow([1, 10, 'a', 1, 'a', 0]);
   
-  updateRow(testSheet, 2, {'K2': 'x', 'K6': 'y'});
+  updateRow(testSheet, 1, {'K2': 'x', 'K6': 'y'});
   
   var row = testSheet.getRange(2, 1, 1, 6).getDisplayValues();
   var columnIds = [1,5];
@@ -898,7 +913,7 @@ function test_groupedDataMap(){
 
 
 function test_performance(){
-  var testSheet = ss.getSheetByName('Arkusz1');
+  var testSheet = ss.getSheetByName('Big Table');
 
   console.time('getValues');
   testSheet.getDataRange().getValues();
@@ -920,12 +935,281 @@ function test_performance(){
   var out = selectData(testSheet, {'K1': 'Banana'});
   console.timeEnd('select 3');
   
+  console.time('values');
+  Logger.log(out[0].values());
+  console.timeEnd('values');
+  
+  return true;
+}
+
+function test_performance_benchmark(){
+  for (var n = 0; n < 6; n++){
+    test_performance();
+//    Utilities.sleep(1000);
+  }
+}
+
+// Test:
+// - SqlAbstract create DB from spreadsheet
+// - createDB: name
+// - dropTable: table
+// - initTable: table, multi values
+// - insert: object, array
+function test_SqlAbstract_insert() {
+  var sql = new SqlAbstract({debug: true, spreadsheets: [ssUrl]});
+
+  sql.dropTable({table: 'Table1'});
+  
+  sql.createDB({
+    spreadsheet: ssUrl,
+    tables: [
+      {
+        name: 'Table1',
+        columns: ['C1', 'C2', 'C3']
+      }
+    ]
+  })
+  
+  var duplicatedTableDetected = false;
+  try {
+    var out = sql.createTable({
+      spreadsheet: ssUrl,
+      table: {
+        name: 'Table1',
+        columns: ['C1', 'C2', 'C3']
+      }
+    });
+    duplicatedTableDetected = !out;
+  } catch(e){
+    duplicatedTableDetected = true;
+  }
+  
+  if (!duplicatedTableDetected) throw "Duplicated table name not detected!";
+  
+  // initTable
+  
+  console.time('init');
+  sql.initTable({table: 'Table1', values: [[1, 'init', 1],[1, 'init', 1],[1, 'init', 1],[1, 'init', 1],[1, 'init', 1]]});
+  console.timeEnd('init');
+  
+  // insert
+  
+  sql.insert({table: 'Table1', values: {'C1': 1, 'C2': 'insert', 'C3': 2}});
+  
+  console.time('insert multiple');
+  sql.insert({table: 'Table1', values: [[1, 'insert multiple', 3],[1, 'insert multiple', 3],[1, 'insert multiple', 3],[1, 'insert multiple', 3],[1, 'insert multiple', 3]]});
+  console.timeEnd('insert multiple');
+  
+  if (sql.select({table: 'Table1', where:{'C2': 'init'}}).length != 5) throw "Init failed!";
+  
+  if (sql.select({table: 'Table1', where:{'C2': 'insert'}}).length != 1) throw "Insert failed!";
+  
+  if (sql.select({table: 'Table1', where:{'C2': 'insert multiple'}}).length != 5) throw "Insert multiple failed!";
+  
+  // Checking
+  
+  var table = sql.getTable({table: 'Table1'});
+  
+  var sheetRows = structure2string(table.sheet.getDataRange().getDisplayValues());
+  Logger.log(sheetRows);
+  var expect = '[[string_C1,string_C2,string_C3],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_insert,string_2],[string_1,string_insert multiple,string_3],[string_1,string_insert multiple,string_3],[string_1,string_insert multiple,string_3],[string_1,string_insert multiple,string_3],[string_1,string_insert multiple,string_3]]';
+
+  if (sheetRows != expect) throw "Data in sheet not updated!";
+  
+//  sql.dropTable({table: 'Table1'});
+}
+
+
+// Test:
+// - SqlAbstract create DB from spreadsheet
+// - createDB: as
+// - dropTable: table
+// - insert: table, multi values
+// - update: table, single, next update, multi update, checking if tmp data was updated, checking if data in sheet was updated
+// - select: table
+function test_SqlAbstract_update() {
+  var testSheet = ss.getSheetByName('Big Table');
+  
+  var sql = new SqlAbstract({debug: true, spreadsheets:[ssUrl]});
+  
+  sql.dropTable({table: 'Test - update'});
+  
+  sql.createDB({
+    spreadsheet: ssUrl,
+    tables: [
+      {
+        name: 'Test - update',
+        as: 'Update',
+        columns: ['K1', 'K2']
+      }
+    ]
+  })
+  
+  console.time('insert 1');
+  sql.insert({table: 'Update', values:[
+    {'K1': 'a', 'K2': 'Null'},
+    {'K1': 'b', 'K2': 'Null'},
+    {'K1': 'b', 'K2': 'Null'},
+    {'K1': 'c', 'K2': 'Null'},
+    ]});
+  console.timeEnd('insert 1');
+  
+    
+  // update
+    
+  console.time('update 1');
+  var out = sql.update({table: 'Update', where:{'K1': 'a'}, set:{'K2': 'Test1'}});
+  console.timeEnd('update 1');
+  console.log('Rows:', out.length);
+  
+  if (out.length != 1) throw "Update 1 row not found!";
+  
+  if (sql.select({table: 'Update', where:{'K1': 'a'}})[0].get('K2') != 'Test1') throw "Update 1 value not changed!";
+  
+  console.time('update 2');
+  var out = sql.update({table: 'Update', where:{'K1': 'a'}, set:{'K2': 'Test2'}});
+  console.timeEnd('update 2');
+  console.log('Rows:', out.length);
+  
+  if (out.length != 1) throw "Update 2 row not found!";
+  
+  if (sql.select({table: 'Update', where:{'K1': 'a'}})[0].get('K2') != 'Test2') throw "Update 2 value not changed!";
+
+  console.time('update 3');
+  var out = sql.update({table: 'Update', where:{'K1': 'b'}, set:{'K2': 'Test 3'}});
+  console.timeEnd('update 3');
+  console.log('Rows:', out.length);
+  
+  if (out.length != 2) throw "Update 3 rows not found!";
+  
+  // updateRow
+  
+  sql.updateRow({table: 'Update', rowNr: 4, values: {'K2': 'updateRow'}})
+  
+  if (sql.select({table: 'Update', where:{'K1': 'c'}})[0].get('K2') != 'updateRow') throw "Update row failed!";
+  
+  // Checking
+  
+  var table = sql.getTable({table: 'Update'});
+  
+  var sheetRows = structure2string(table.sheet.getDataRange().getDisplayValues());
+  
+  var expect = '[[string_K1,string_K2],[string_a,string_Test2],[string_b,string_Test 3],[string_b,string_Test 3],[string_c,string_updateRow]]';
+
+  if (sheetRows != expect) throw "Data in sheet not updated!";
+  
+//  sql.dropTable({table: 'Update'});
+}
+
+
+function test_SqlAbstract_options() {
+  var testSheet = ss.getSheetByName('Big Table');
+  
+  var sql = new SqlAbstract({debug: true});
+  
+  // sheet, as, table
+  var out1 = sql.select({sheet: testSheet, as: 'table1', where:{'K1': {'~':'Banana'}}});
+  var out2 = sql.select({table: 'table1', where:{'K1': {'~':'Banana'}}});
+  if (out1.length != out2.length) throw "Not the same outputs 1!";
+  
+  //sheet, table
+  var out3 = sql.select({sheet: testSheet, where:{'K1': {'~':'Banana'}}});
+  var out4 = sql.select({table: 'Big Table', where:{'K1': {'~':'Banana'}}});
+  if (out3.length != out4.length) throw "Not the same outputs 2!";
+  
+  //sheets
+  var sql2 = new SqlAbstract({debug: true, sheets:[testSheet]});
+  var out5 = sql2.select({table: 'Big Table', where:{'K1': {'~':'Banana'}}});
+  
+  if (out1.length != out5.length) throw "Not the same outputs 3!";
+}
+
+
+function test_serializer() {
+  var sql = new SqlAbstract({debug: true, spreadsheets:[ssUrl]});
+  sql.dropTable({table: 'sheet - TestSerializers'});
+  
+  sql.createTable({
+    spreadsheet: ssUrl,
+    table: {
+      name: 'sheet - TestSerializers',
+      as: 'TestSerializers',
+      columns: ['C1', 'C2', 'Time'],
+      serializer: {
+        'C2': {
+          get: JSON.parse,
+          set: JSON.stringify
+        },
+      }
+    }
+  });
+  
+  sql.insert({table: 'TestSerializers', values: {'C1': 1, 'C2': '', 'Time': ''}});
+  
+  var out = sql.select({table: 'TestSerializers', where:{'C1': 1}});
+
+  //set
+  out[0].set({'C2': {a:[1,2,3]}, 'Time': new Date()});
+  
+  var sql2 = new SqlAbstract({debug: true, spreadsheets: [
+    {
+      url: ssUrl,
+      tables: {
+        'sheet - TestSerializers': {
+          as: 'TestSerializers',
+          serializer: {
+            'C2': {
+              get: JSON.parse,
+              set: JSON.stringify
+            },
+            'Time': {
+              get: function(x){return Utilities.formatDate(x, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss")}
+            }
+          }
+        }
+      }
+    }
+  ]});
+  
+  out2 = sql2.select({table: 'TestSerializers', where:{'C1': 1}});
+  
+  try {
+    out2[0].get('C2').a;
+  } catch (e){
+    throw "JSON Serializer failed!"
+  }
+  
+  var time = out2[0].get('Time');
+  Logger.log(time);
+  if (!/\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d/.test(time)) throw "Time serializer failed!";
+  
+  sql.dropTable({table: 'TestSerializers'});
+}
+
+
+function test_select_serializer() {
+  var testSheet = ss.getSheetByName('Big Table');
+
+  var out = select({
+    sheet:testSheet,
+    where:{'K1': 'time'},
+    serializer: {
+      'K2': {
+        get: function(x){return Utilities.formatDate(x, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss")}
+      }
+    }
+  });
+  
+  var time = out[0].get('K2');
+  Logger.log(time);
+  if (!/\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d/.test(time)) throw "Time serializer failed!";
+  
   return true;
 }
 
 
 function test_SqlAbstract_performance(){
-  var testSheet = ss.getSheetByName('Arkusz1');
+  var testSheet = ss.getSheetByName('Big Table');
   
   var sql = new SqlAbstract({debug: true});
   console.time('select 1');
@@ -966,223 +1250,66 @@ function test_SqlAbstract_performance(){
 }
 
 
-function test_SqlAbstract_update() {
-  var testSheet = ss.getSheetByName('Arkusz1');
+function test_dates() {
+  var sql = new SqlAbstract({debug: true, spreadsheets:[ssUrl]});
   
-  var sql = new SqlAbstract({debug: true, spreadsheets:[ss.getUrl()]});
-  
-  sql.dropTable({table: 'Test - update'});
+  sql.dropTable({table: 'Test - dates'});
   
   sql.createDB({
-    spreadsheet: ss.getUrl(),
+    spreadsheet: ssUrl,
     tables: [
       {
-        name: 'Test - update',
-        as: 'Update',
-        columns: ['K1', 'K2']
+        name: 'Test - dates',
+        as: 'Dates',
+        columns: ['K1', 'K2', 'K3']
       }
     ]
   })
   
-  console.time('insert 1');
-  sql.insert({table: 'Update', values:[
-    {'K1': 'a', 'K2': 'Null'},
-    {'K1': 'b', 'K2': 'Null'},
-    {'K1': 'b', 'K2': 'Null'},
-    ]});
-  console.timeEnd('insert 1');
+  var date1 = new Date(2020,6,10,10,15,25);
+  var date2 = new Date(2020,6,20,10,15,25);
+  var date3 = new Date(2020,6,30,10,15,25);
   
-  console.time('update 1');
-  var out = sql.update({table: 'Update', where:{'K1': 'a'}, set:{'K2': 'Test1'}});
-  console.timeEnd('update 1');
-  console.log('Rows:', out.length);
-  
-  if (out.length != 1) throw "Update 1 row not found!";
-  
-  if (sql.select({table: 'Update', where:{'K1': 'a'}})[0].get('K2') != 'Test1') throw "Update 1 value not changed!";
-  
-  console.time('update 2');
-  var out = sql.update({table: 'Update', where:{'K1': 'a'}, set:{'K2': 'Test2'}});
-  console.timeEnd('update 2');
-  console.log('Rows:', out.length);
-  
-  if (out.length != 1) throw "Update 2 row not found!";
-  
-  if (sql.select({table: 'Update', where:{'K1': 'a'}})[0].get('K2') != 'Test2') throw "Update 2 value not changed!";
-
-  console.time('update 3');
-  var out = sql.update({table: 'Update', where:{'K1': 'b'}, set:{'K2': 'Test 3'}});
-  console.timeEnd('update 3');
-  console.log('Rows:', out.length);
-  
-  if (out.length != 2) throw "Update 3 rows not found!";
-  
-  var table = sql.getTable({table: 'Update'});
-  
-  var sheetRows = structure2string(table.sheet.getDataRange().getDisplayValues());
-  
-  var expect = '[[string_K1,string_K2],[string_a,string_Test2],[string_b,string_Test 3],[string_b,string_Test 3]]';
-  
-  if (sheetRows != expect) throw "Data in sheet not updated!";
-  
-  sql.dropTable({table: 'Update'});
-}
-
-
-function test_SqlAbstract_options() {
-  var testSheet = ss.getSheetByName('Arkusz1');
-  
-  var sql = new SqlAbstract({debug: true});
-  
-  // sheet, as, table
-  var out1 = sql.select({sheet: testSheet, as: 'table1', where:{'K1': {'~':'Banana'}}});
-  var out2 = sql.select({table: 'table1', where:{'K1': {'~':'Banana'}}});
-  if (out1.length != out2.length) throw "Not the same outputs 1!";
-  
-  //sheet, table
-  var out3 = sql.select({sheet: testSheet, where:{'K1': {'~':'Banana'}}});
-  var out4 = sql.select({table: 'Arkusz1', where:{'K1': {'~':'Banana'}}});
-  if (out3.length != out4.length) throw "Not the same outputs 2!";
-  
-  //sheets
-  var sql2 = new SqlAbstract({debug: true, sheets:[testSheet]});
-  var out5 = sql2.select({table: 'Arkusz1', where:{'K1': {'~':'Banana'}}});
-  
-  if (out1.length != out5.length) throw "Not the same outputs 3!";
-}
-
-
-function test_createDB() {
-  var sql = new SqlAbstract({debug: true, spreadsheets: ['https://docs.google.com/spreadsheets/d/1Xvf9Qy0BAyIdbDYPKFSSFbCdWTB9Imv6RC1ZhQe_jyQ/edit#gid=0']});
-
-  sql.dropTable({table: 'Table1'});
-  sql.dropTable({table: 'Table2'});
-  
-  sql.createDB({
-    spreadsheet: 'https://docs.google.com/spreadsheets/d/1Xvf9Qy0BAyIdbDYPKFSSFbCdWTB9Imv6RC1ZhQe_jyQ/edit#gid=0',
-    tables: [
-      {
-        name: 'Table1',
-        columns: ['C1', 'C2', 'C3']
-      }
-    ]
-  })
-  
-  console.time('init');
-  sql.initTable({table: 'Table1', values: [[1, 'init', 1],[1, 'init', 1],[1, 'init', 1],[1, 'init', 1],[1, 'init', 1]]});
-  console.timeEnd('init');
-  
-  sql.insert({table: 'Table1', values: {'C1': 1, 'C2': 'insert', 'C3': 2}});
-  console.time('insert singe');
-  sql.insert({table: 'Table1', values: [1, 'insert', 2]});
-  console.timeEnd('insert singe');
-  
-  console.time('insert multiple');
-  sql.insert({table: 'Table1', values: [[1, 'insert multiple', 3],[1, 'insert multiple', 3],[1, 'insert multiple', 3],[1, 'insert multiple', 3],[1, 'insert multiple', 3]]});
-  console.timeEnd('insert multiple');
-  
-  if (sql.select({table: 'Table1', where:{'C2': 'init'}}).length != 5) throw "Init failed!";
-  
-  if (sql.select({table: 'Table1', where:{'C2': 'insert'}}).length != 2) throw "Insert failed!";
-  
-  if (sql.select({table: 'Table1', where:{'C2': 'insert multiple'}}).length != 5) throw "Insert multiple failed!";
-  
-  var duplicatedTableDetected = false;
-  try {
-    var out = sql.createTable({
-      spreadsheet: 'https://docs.google.com/spreadsheets/d/1Xvf9Qy0BAyIdbDYPKFSSFbCdWTB9Imv6RC1ZhQe_jyQ/edit#gid=0',
-      table: {
-        name: 'Table1',
-        columns: ['C1', 'C2', 'C3']
-      }
-    });
-    duplicatedTableDetected = !out;
-  } catch(e){
-    duplicatedTableDetected = true;
-  }
-  
-  if (!duplicatedTableDetected) throw "Duplicated table name not detected!";
-}
-
-
-function test_serializer() {
-  var sql = new SqlAbstract({debug: true, spreadsheets:[ss.getUrl()]});
-  sql.dropTable({table: 'sheet - TestSerializers'});
-  
-  sql.createTable({
-    spreadsheet: ss.getUrl(),
-    table: {
-      name: 'sheet - TestSerializers',
-      as: 'TestSerializers',
-      columns: ['C1', 'C2', 'Time'],
-      serializer: {
-        'C2': {
-          get: JSON.parse,
-          set: JSON.stringify
-        },
-      }
-    }
-  });
-  
-  sql.insert({table: 'TestSerializers', values: {'C1': 1, 'C2': '', 'Time': ''}});
-  
-  var out = sql.select({table: 'TestSerializers', where:{'C1': 1}});
-
-  //set
-  out[0].set({'C2': {a:[1,2,3]}, 'Time': new Date()});
-  
-  var sql2 = new SqlAbstract({debug: true, spreadsheets: [
-    {
-      url: ss.getUrl(),
-      tables: {
-        'sheet - TestSerializers': {
-          as: 'TestSerializers',
-          serializer: {
-            'C2': {
-              get: JSON.parse,
-              set: JSON.stringify
-            },
-            'Time': {
-              get: function(x){return Utilities.formatDate(x, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss")}
-            }
-          }
-        }
-      }
-    }
+  sql.insert({table: 'Dates', values:[
+    {'K1': 'a', 'K2': date1},
+    {'K1': 'b', 'K2': date2},
+    {'K1': 'c', 'K2': date3}
   ]});
   
-  out2 = sql2.select({table: 'TestSerializers', where:{'C1': 1}});
+  var select = sql.select({table: 'Dates', where:{'K2': date1}});
+  if (select.length != 1 || select[0].get('K1') != 'a') throw "Select date 1 object failed!";
   
-  try {
-    out2[0].get('C2').a;
-  } catch (e){
-    throw "JSON Serializer failed!"
-  }
+  var select = sql.select({table: 'Dates', where:{'K2': {'==': date1}}});
+  if (select.length != 1 || select[0].get('K1') != 'a') throw "Select date 1 object condition failed!";
   
-  var time = out2[0].get('Time');
-  Logger.log(time);
-  if (!/\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d/.test(time)) throw "Time serializer failed!";
+  var select = sql.select({table: 'Dates', where:{'K2': '2020-07-10 10:15:25'}});
+  if (select.length != 1 || select[0].get('K1') != 'a') throw "Select date 1 string failed!";
   
-  sql.dropTable({table: 'TestSerializers'});
+  var select = sql.select({table: 'Dates', where:{'K2': {'==': '2020-07-10 10:15:25'}}});
+  if (select.length != 1 || select[0].get('K1') != 'a') throw "Select date 1 string condition failed!";
+  
+  var select = sql.select({table: 'Dates', where:{'K2': {'>=': '2020-07-20 10:15:25'}}});
+  var out = structure2string(select.map(function(x){ return x.get('K1')}));
+  if (out != "[string_b,string_c]") throw "Select date 1 string condition >= failed!";
+  
+  var select = sql.select({table: 'Dates', where:{'K2': {'!=': '2020-07-20 10:15:25'}}});
+  var out = structure2string(select.map(function(x){ return x.get('K1')}));
+  if (out != "[string_a,string_c]") throw "Select date 1 string condition != failed!";
+  
+  var select = sql.select({table: 'Dates', where:{'K2': {'>=': '2020-07-10 10:15:00', '<=': '2020-07-20 10:15:30'}}});
+  var out = structure2string(select.map(function(x){ return x.get('K1')}));
+  if (out != "[string_a,string_b]") throw "Select date 1 string condition >= <= failed!";
+  
+  var select = sql.select({table: 'Dates', where:{'K2': ['2020-07-10 10:15:25', '2020-07-30 10:15:25']}});
+  var out = structure2string(select.map(function(x){ return x.get('K1')}));
+  if (out != "[string_a,string_c]") throw "Select date 1 string condition >= <= failed!";
 }
 
 
-function test_select_serializer() {
-  var testSheet = ss.getSheetByName('Arkusz1');
-
-  var out = select({
-    sheet:testSheet,
-    where:{'K1': 'time'},
-    serializer: {
-      'K2': {
-        get: function(x){return Utilities.formatDate(x, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss")}
-      }
-    }
-  });
-  
-  var time = out[0].get('K2');
-  Logger.log(time);
-  if (!/\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d/.test(time)) throw "Time serializer failed!";
-  
-  return true;
+function test_getLastUpdatedTime(){
+  // 94ms, 123ms
+  console.time('getLastUpdatedTime');
+  var ssId = ss.getId();
+  console.log(getLastUpdatedTime(ssId));
+  console.timeEnd('getLastUpdatedTime');
 }
