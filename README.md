@@ -182,6 +182,9 @@ var sql = new SqlAbstract({
   Query: `K2 > 11 AND K2 <= 14`  
   Where: `{'K2': function(x){return x > 11 && x <= 14}}`
 
+## Cache
+Second and next select from the same table gets data from cache, so it's faster.
+
 ## Single functions
 1. selectData  
     Returns selected rows as array of objects.  
@@ -196,8 +199,32 @@ var sql = new SqlAbstract({
     Adds given data for selected columns as a new row.  
     `appendRow(sheet, {'K1': 9, 'K2': 'x', 'K6': 'a'})`
 
+## Duplicated header name handling
+When in columns headers there is duplicated column name, it's name should be called with adding it's occurrence number after the name ex.:  
+Headers: `'K1', 'K2', 'K3', 'K2', 'K2'`.  
+Second 'K2' is called 'K2_2', third 'K2_3' and so on.  
+Ex. the where clause, searching on second column `'K2': {'K2_2': 10}`
+
+## Performance
+Depends on Google Script environment performance. They vary depending on the time of run. Ex. measured times (table with 10000 rows):  
+- getValues: 3549ms  
+  ```
+  var testSheet = ss.getSheetByName('Big Table');
+  testSheet.getDataRange().getValues();
+  ```
+- selectData without condition: 3211ms
+  ```
+  var out = selectData(testSheet);
+  ```
+- selectData with condition: 4528ms
+  ```
+  var out = selectData(testSheet, {'K1': 'Banana'});
+  ```
+  
 ## Example
-Sheet  
+More examples there are in file Tests.gs.  
+  
+Example sheet  
 <table>
   <thead>
     <tr>
