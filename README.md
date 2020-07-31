@@ -182,7 +182,7 @@ var sql = new SqlAbstract({
   Query: `K2 > 11 AND K2 <= 14`  
   Where: `{'K2': function(x){return x > 11 && x <= 14}}`
 
-## Cache
+### Cache
 Second and next select from the same table gets data from cache, so it's faster.
 
 ## Single functions
