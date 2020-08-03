@@ -3,13 +3,18 @@ Library helps working on Google Spreadsheet as on database. The query is not tex
 Module loads data from sheet by method getValues() (returns objects ex. if value in cell is date, returns Date object, etc.). Inspiration was Perl module [SQL::Abstract](https://metacpan.org/pod/SQL::Abstract)
 
 ## SqlAbstract object
+Pure object
 ```
 var sql = new SqlAbstract();
-
+```
+All sheets from selected spreadsheets will be available as tables (table name is sheet name).
+```
 var sql = new SqlAbstract({
   spreadsheets: [Spreadsheet]
 });
-
+```
+Only selected tables from given spreadsheet will be tables. 
+```
 var sql = new SqlAbstract({
   spreadsheets: [
     {
