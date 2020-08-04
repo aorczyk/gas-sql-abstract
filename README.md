@@ -3,7 +3,7 @@ Library helps working on Google Spreadsheet as on database. The query is not tex
 Module loads data from sheet by method getValues() (returns objects ex. if value in cell is date, returns Date object, etc.). Inspiration was Perl module [SQL::Abstract](https://metacpan.org/pod/SQL::Abstract)
 
 ## SqlAbstract object
-Pure object
+Pure object.
 ```
 var sql = new SqlAbstract();
 ```
@@ -13,7 +13,10 @@ var sql = new SqlAbstract({
   spreadsheets: [Spreadsheet]
 });
 ```
-Only selected tables from given spreadsheet will be tables. 
+Only selected tables from given spreadsheet will be tables.  
+Options:  
+- as - given table name for selected sheet
+- serializer - data in each column could be write and read in different way, ex. as JSON  
 ```
 var sql = new SqlAbstract({
   spreadsheets: [
