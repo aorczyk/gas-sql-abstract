@@ -82,9 +82,9 @@ var sql = new SqlAbstract({
   let out = sql.select({table: 'Table1', where:{'C2': 'init'}, orderBy: ['C3','C4'], groupBy: ['C1']})
   ```
   **Parameters:**
-  - sheet - sheet handler
+  - sheet - sheet handler (required if "table" is not given)
   - as - declared table name
-  - table - name of table (sheet name or declared using 'as' table name)
+  - table - name of table, sheet name or declared using 'as' table name (required if "sheet" is not given)
   - where - where clause, Java Script structure (describled in next section) or function ex.:
     ```
     function(row){return row['K1'] == 'd15'}
