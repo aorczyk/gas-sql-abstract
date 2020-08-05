@@ -45,7 +45,7 @@ var sql = new SqlAbstract({
 
 ### Methods
 
-- createDB
+- createDB - creates sheets with given columns and assign them to sql object as table with given name.
   ```
   sql.createDB({
     spreadsheet: SpreadsheetUrl,
@@ -58,7 +58,7 @@ var sql = new SqlAbstract({
     ]
   })
   ```
-- createTable
+- createTable - create table in given sheet and assign it to sql object as table with given name.
   ```
   sql.createTable({
     spreadsheet: SpreadsheetUrl,
@@ -69,15 +69,15 @@ var sql = new SqlAbstract({
     }
   });
   ```
-- dropTable
+- dropTable - delete sheet from spreadsheet.
   ```
   sql.dropTable({table: 'Table1'});
   ```
-- initTable
+- initTable - insert initial data to selected table.
   ```
   sql.initTable({table: 'Table1', values: [[1, 'init', 1],[1, 'init', 1]]});
   ```
-- select
+- select - select data from table.
   ```
   let out = sql.select({table: 'Table1', where:{'C2': 'init'}, orderBy: ['C3','C4'], groupBy: ['C1']})
   ```
