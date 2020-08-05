@@ -316,7 +316,7 @@ Example sheet
 var ss = SpreadsheetApp.getActiveSpreadsheet();
 var sql = new SqlAbstract({spreadsheets: [ss]});
 // table is sheet name
-var out = sql.select({table: 'Sheet1', where: [{'K1': '2'}, {'K2': {‘>’: 14}, 'K3': ‘c’}]});
+var out = sql.select({table: 'Sheet1', where: [{'K1': '2'}, {'K2': {'>': 14}, 'K3': 'c'}]});
 
 for (var m in out){
   Logger.log(m);
@@ -330,7 +330,7 @@ or
 ```
 var ss = SpreadsheetApp.getActiveSpreadsheet();
 var sheet = ss.getSheetByName('Data');
-var out = selectData(sheet, [{'K1': '2'}, {'K2': {‘>’: 14}, 'K3': ‘c’}]);
+var out = selectData(sheet, [{'K1': '2'}, {'K2': {'>': 14}, 'K3': 'c'}]);
 
 for (var m in out){
   Logger.log(m);
