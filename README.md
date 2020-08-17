@@ -10,7 +10,7 @@ var sql = new SqlAbstract();
 All sheets from selected spreadsheets will be available as tables (table name is sheet name).
 ```
 var sql = new SqlAbstract({
-  spreadsheets: [Spreadsheet]
+  spreadsheets: [SpreadsheetUrl]
 });
 ```
 Only selected tables from given spreadsheet will be tables.  
@@ -313,8 +313,8 @@ Example sheet
 </table>
 
 ```
-var ss = SpreadsheetApp.getActiveSpreadsheet();
-var sql = new SqlAbstract({spreadsheets: [ss]});
+var spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/1234';
+var sql = new SqlAbstract({spreadsheets: [spreadsheetUrl]});
 // table is sheet name
 var out = sql.select({table: 'Sheet1', where: [{'K1': '2'}, {'K2': {'>': 14}, 'K3': 'c'}]});
 
@@ -328,7 +328,8 @@ for (var m in out){
 ```
 or   
 ```
-var ss = SpreadsheetApp.getActiveSpreadsheet();
+var spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/1234';
+var ss = SpreadsheetApp.openByUrl(spreadsheetUrl);
 var sheet = ss.getSheetByName('Data');
 var out = selectData(sheet, [{'K1': '2'}, {'K2': {'>': 14}, 'K3': 'c'}]);
 
