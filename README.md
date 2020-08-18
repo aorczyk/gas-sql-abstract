@@ -1,6 +1,9 @@
 # Google Apps Script SQL Abstract
-Library helps working on Google Spreadsheet as on database. The query is not text but Java Script structure. First row in sheet is reserved for columns headers. 
-Module loads data from sheet by method getValues() (returns objects ex. if value in cell is date, returns Date object, etc.). Inspiration was Perl module [SQL::Abstract](https://metacpan.org/pod/SQL::Abstract)
+Library helps working on Google Spreadsheet as on database. Inspiration was Perl module [SQL::Abstract](https://metacpan.org/pod/SQL::Abstract).
+- First row in sheet is reserved for columns headers.
+- The query is not text but Java Script structure.
+- Ability for serializing and deserializing data.
+- Module loads data from sheet by method getValues() (returns objects ex. if value in cell is date, returns Date object, etc.).
 
 ## SqlAbstract object
 Pure object.
