@@ -10,7 +10,7 @@
  * var sql = new SqlAbstract();
  * 
  * var sql = new SqlAbstract({
- *   spreadsheets: [Spreadsheet]
+ *   spreadsheets: [SpreadsheetUrl]
  * });
  * 
  * var sql = new SqlAbstract({
@@ -323,22 +323,42 @@ function SqlAbstract(params) {
       throw e;
     }
 
-    var cachedRows = getCachedRows(sheet);
+    var columnIdMapping = getColumnIdMapping(table);
+    
+    var serialize = function(values){
+      if ('serializer' in table){
+        for (var colName in table.serializer){
+          if ('set' in table.serializer[colName]){
+            if (isObject(values)){
+              if (colName in values){
+                values[colName] = table.serializer[colName].set(values[colName]);
+              }
+            } else if (isArray(values)) {
+              values[columnIdMapping[colName]] = table.serializer[colName].set(values[columnIdMapping[colName]]);
+            }
+          }
+        }
+      }
 
+      return values;
+    }
+
+    var cachedRows = getCachedRows(sheet);
+    
     if (isObject(opt.values)) {
-      appendRow(sheet, opt.values, cachedRows, getColumnIdMapping(table));
+      appendRow(sheet, serialize(opt.values), cachedRows, getColumnIdMapping(table));
     } else if (isArray(opt.values)) {
       for (var n in opt.values) {
         var row = opt.values[n];
 
         if (isArray(row)) {
-          sheet.appendRow(row);
+          sheet.appendRow(serialize(row));
 
           if (cachedRows) {
             cachedRows.push(row);
           }
         } else if (isObject(row)) {
-          appendRow(sheet, row, cachedRows);
+          appendRow(sheet, serialize(row), cachedRows);
         } else {
           throw "Insert data is invalid!"
         }
