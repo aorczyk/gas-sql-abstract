@@ -965,7 +965,12 @@ function test_SqlAbstract_insert() {
     tables: [
       {
         name: 'Table1',
-        columns: ['C1', 'C2', 'C3']
+        columns: ['C1', 'C2', 'C3'],
+        serializer: {
+          'C3': {
+            set: function(x){return '_' + x;}
+          },
+        }
       }
     ]
   })
@@ -976,7 +981,7 @@ function test_SqlAbstract_insert() {
       spreadsheet: ssUrl,
       table: {
         name: 'Table1',
-        columns: ['C1', 'C2', 'C3']
+        columns: ['C1', 'C2', 'C3'],
       }
     });
     duplicatedTableDetected = !out;
@@ -1000,19 +1005,25 @@ function test_SqlAbstract_insert() {
   sql.insert({table: 'Table1', values: [[1, 'insert multiple', 3],[1, 'insert multiple', 3],[1, 'insert multiple', 3],[1, 'insert multiple', 3],[1, 'insert multiple', 3]]});
   console.timeEnd('insert multiple');
   
+  console.time('insert multiple object');
+  sql.insert({table: 'Table1', values: [{'C1': 1, 'C2': 'insert multiple object', 'C3': 2},{'C1': 1, 'C2': 'insert multiple object', 'C3': 2}]});
+  console.timeEnd('insert multiple object');
+  
   if (sql.select({table: 'Table1', where:{'C2': 'init'}}).length != 5) throw "Init failed!";
   
   if (sql.select({table: 'Table1', where:{'C2': 'insert'}}).length != 1) throw "Insert failed!";
   
   if (sql.select({table: 'Table1', where:{'C2': 'insert multiple'}}).length != 5) throw "Insert multiple failed!";
   
+  if (sql.select({table: 'Table1', where:{'C2': 'insert multiple object'}}).length != 2) throw "Insert multiple object failed!";
+  
   // Checking
   
   var table = sql.getTable({table: 'Table1'});
   
   var sheetRows = structure2string(table.sheet.getDataRange().getDisplayValues());
-  Logger.log(sheetRows);
-  var expect = '[[string_C1,string_C2,string_C3],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_insert,string_2],[string_1,string_insert multiple,string_3],[string_1,string_insert multiple,string_3],[string_1,string_insert multiple,string_3],[string_1,string_insert multiple,string_3],[string_1,string_insert multiple,string_3]]';
+  // Logger.log(sheetRows);
+  var expect = '[[string_C1,string_C2,string_C3],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_init,string_1],[string_1,string_insert,string__2],[string_1,string_insert multiple,string__3],[string_1,string_insert multiple,string__3],[string_1,string_insert multiple,string__3],[string_1,string_insert multiple,string__3],[string_1,string_insert multiple,string__3],[string_1,string_insert multiple object,string__2],[string_1,string_insert multiple object,string__2]]';
 
   if (sheetRows != expect) throw "Data in sheet not updated!";
   
