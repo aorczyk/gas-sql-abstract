@@ -2,8 +2,8 @@
 Library helps working on Google Spreadsheet as on database. Inspiration was Perl module [SQL::Abstract](https://metacpan.org/pod/SQL::Abstract).
 - First row in sheet is reserved for columns headers.
 - The query is not text but Java Script structure.
-- Ability for serializing and deserializing data.
-- Module loads data from sheet by method getValues() (returns objects ex. if value in cell is date, returns Date object, etc.).
+- Loading data from sheet by method getValues() (returns objects ex. if value in cell is date, returns Date object, etc.).
+- Serializing and deserializing data.
 
 ## SqlAbstract object
 Pure object.
@@ -100,7 +100,7 @@ var sql = new SqlAbstract({
   - columns - limits colums, if not given returns all columns
   
   **Return**  
-  Output is a list of row objects.
+  Array of row objects.
 
   **Row object methods:**
   - get([columnName]) - when column name is given, returns data from given column in row. Otherwise returns all row as hash, where keys are columns headers.
