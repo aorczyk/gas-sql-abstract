@@ -98,7 +98,7 @@
  * 
  *   ex. table.sheet.getDataRange().getDisplayValues()
  */
-function SqlAbstract(params) {
+ function SqlAbstract(params) {
   var tables = {};
 
   if (params && 'spreadsheets' in params) {
@@ -323,18 +323,15 @@ function SqlAbstract(params) {
       throw e;
     }
 
-    var columnIdMapping = getColumnIdMapping(table);
-    
     var serialize = function(values){
+      Logger.log('serialize');
       if ('serializer' in table){
-        for (var colName in table.serializer){
-          if ('set' in table.serializer[colName]){
-            if (isObject(values)){
-              if (colName in values){
-                values[colName] = table.serializer[colName].set(values[colName]);
-              }
-            } else if (isArray(values)) {
-              values[columnIdMapping[colName]] = table.serializer[colName].set(values[columnIdMapping[colName]]);
+        Logger.log('serialize found');
+        if (isObject(values)){
+          Logger.log('serializeing');
+          for (var colName in table.serializer){
+            if ('set' in table.serializer[colName] && colName in values){
+              values[colName] = table.serializer[colName].set(values[colName]);
             }
           }
         }
@@ -344,15 +341,18 @@ function SqlAbstract(params) {
     }
 
     var cachedRows = getCachedRows(sheet);
+
+    Logger.log('insert');
     
     if (isObject(opt.values)) {
+      Logger.log('inser object');
       appendRow(sheet, serialize(opt.values), cachedRows, getColumnIdMapping(table));
     } else if (isArray(opt.values)) {
       for (var n in opt.values) {
         var row = opt.values[n];
 
         if (isArray(row)) {
-          sheet.appendRow(serialize(row));
+          sheet.appendRow(row);
 
           if (cachedRows) {
             cachedRows.push(row);
