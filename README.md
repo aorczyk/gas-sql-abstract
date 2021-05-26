@@ -5,12 +5,6 @@ Library helps working on Google Spreadsheet as on database. Inspiration was Perl
 - Loading data from sheet by method getValues() (returns objects ex. if value in cell is date, returns Date object, etc.).
 - Serializing and deserializing data.
 
-**Google Apps Script Library Id**
-```
-Mhmeao1lhDTlYt7dkgW2hY_pQwBC3KDn-
-```
->A script that uses a library does not run as quickly as it would if all the code were contained within a single script project.
-
 ## SqlAbstract object
 Pure object.
 ```
