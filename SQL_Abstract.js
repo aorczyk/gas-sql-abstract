@@ -20,6 +20,7 @@
  *       tables: {
  *         'Sheet Name': {
  *           as: 'Table name',
+ *           headerRowNr: 0,
  *           serializer: {
  *             'Column 1': { // for JSON
  *               get: JSON.parse,
@@ -73,6 +74,7 @@
  * - select
  * 
  *   sql.select({table: 'Table1', where:{'C2': 'init'}})
+ *   sql.select({sheet: sheet, headerRowNr: 0, where:{'C2': 'init'}})
  * 
  * - insert
  * 
@@ -144,6 +146,10 @@ function SqlAbstract(params) {
 
           if (spreadsheet && 'tables' in spreadsheet && spreadsheet.tables[sheetName] && 'serializer' in spreadsheet.tables[sheetName]) {
             tables[tableKey].serializer = spreadsheet.tables[sheetName].serializer;
+          }
+
+          if (spreadsheet && 'tables' in spreadsheet && spreadsheet.tables[sheetName] && 'headerRowNr' in spreadsheet.tables[sheetName]) {
+            tables[tableKey].headerRowNr = spreadsheet.tables[sheetName].headerRowNr;
           }
         } else {
           throw Utilities.formatString("Table '%s' already exists!", sheetName);
@@ -283,6 +289,14 @@ function SqlAbstract(params) {
       opt.serializer = table.serializer;
     }
 
+    if (!opt.hasOwnProperty('headerRowNr')) {
+      opt.headerRowNr = 0
+
+      if ('headerRowNr' in table) {
+        opt.headerRowNr = table.headerRowNr;
+      }
+    }
+
     if (params && params.debug) console.time('dataProcessed');
     var out = select(opt, data);
     if (params && params.debug) console.timeEnd('dataProcessed');
@@ -323,18 +337,15 @@ function SqlAbstract(params) {
       throw e;
     }
 
-    var columnIdMapping = getColumnIdMapping(table);
-    
     var serialize = function(values){
+      Logger.log('serialize');
       if ('serializer' in table){
-        for (var colName in table.serializer){
-          if ('set' in table.serializer[colName]){
-            if (isObject(values)){
-              if (colName in values){
-                values[colName] = table.serializer[colName].set(values[colName]);
-              }
-            } else if (isArray(values)) {
-              values[columnIdMapping[colName]] = table.serializer[colName].set(values[columnIdMapping[colName]]);
+        Logger.log('serialize found');
+        if (isObject(values)){
+          Logger.log('serializeing');
+          for (var colName in table.serializer){
+            if ('set' in table.serializer[colName] && colName in values){
+              values[colName] = table.serializer[colName].set(values[colName]);
             }
           }
         }
@@ -344,15 +355,18 @@ function SqlAbstract(params) {
     }
 
     var cachedRows = getCachedRows(sheet);
+
+    Logger.log('insert');
     
     if (isObject(opt.values)) {
+      Logger.log('inser object');
       appendRow(sheet, serialize(opt.values), cachedRows, getColumnIdMapping(table));
     } else if (isArray(opt.values)) {
       for (var n in opt.values) {
         var row = opt.values[n];
 
         if (isArray(row)) {
-          sheet.appendRow(serialize(row));
+          sheet.appendRow(row);
 
           if (cachedRows) {
             cachedRows.push(row);
@@ -494,7 +508,7 @@ function SqlAbstract(params) {
  * @return {array} returns selected rows as two dimensional array
  */
 function select(opt, data) {
-  return selectData(opt.sheet, opt.where, opt.groupBy, opt.orderBy, opt.columns, opt.serializer, data);
+  return selectData(opt.sheet, opt.where, opt.groupBy, opt.orderBy, opt.columns, opt.serializer, data, opt.headerRowNr);
 }
 
 /**
@@ -532,8 +546,8 @@ function select(opt, data) {
  * Second 'K2' is called 'K2_2', third K2_3' and so on.
  * Ex. where clause, searching on second column 'K2': {'K2_2': 10}
  */
-function selectData(sheet, where, groupBy, orderBy, fields, serializer, data) {
-  return selectData_(sheet, where, groupBy, orderBy, false, fields, serializer, data);
+function selectData(sheet, where, groupBy, orderBy, fields, serializer, data, headerRowNr) {
+  return selectData_(sheet, where, groupBy, orderBy, false, fields, serializer, data, headerRowNr);
 }
 
 
@@ -549,7 +563,7 @@ function selectDataRows(sheet, where, groupBy, orderBy, fields) {
 }
 
 // Main function
-function selectData_(sheet, where, groupBy, orderBy, responseType, fields, serializer, data) {
+function selectData_(sheet, where, groupBy, orderBy, responseType, fields, serializer, data, headerRowNr) {
   // --- Functions needed ---
   // hashify, extractColumnsFromWhere, checkLogicGroups
   // ------------------------
@@ -578,10 +592,10 @@ function selectData_(sheet, where, groupBy, orderBy, responseType, fields, seria
   }
 
   //  var headers = data.shift();
-  var headers = data[0];
+  var headers = data[headerRowNr];
 
   var columnIdByName = getColumnIdByName(headers);
-
+  
   // Checking if fields there are in table.
   if (fields && fields.length) {
     for (var n in fields) {
