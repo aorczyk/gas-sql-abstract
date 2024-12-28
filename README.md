@@ -20,6 +20,7 @@ Only selected tables from given spreadsheet will be tables.
 Options:  
 - as - given table name for selected sheet
 - serializer - data in each column could be write and read in different way, ex. as JSON  
+- headerRowNr - the number of the row containing column headers
 ```
 var sql = new SqlAbstract({
   spreadsheets: [
@@ -87,6 +88,7 @@ var sql = new SqlAbstract({
   **Parameters:**
   - sheet - sheet handler (required if "table" is not given)
   - as - declared table name
+  - headerRowNr - the number of the row containing column headers
   - table - name of table, sheet name or declared using 'as' table name (required if "sheet" is not given)
   - where - where clause, Java Script structure (describled in next section) or function ex.:
     ```
