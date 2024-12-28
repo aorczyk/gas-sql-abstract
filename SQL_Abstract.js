@@ -1,6 +1,6 @@
 // Project: Sql Abstract
 // Author: Adam Orczyk
-// Last modified: 2020-07-28
+// Last modified: 2024-12-28
 
 /**
  * Returns SqlAbstract object.
