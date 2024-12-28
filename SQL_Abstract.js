@@ -645,7 +645,7 @@ function selectData_(sheet, where, groupBy, orderBy, responseType, fields, seria
   
   var dataLength = data.length;
   
-  for (var n = 1; n < dataLength; n++) {
+  for (var n = headerRowNr + 1; n < dataLength; n++) {
     var rowData = data[n];
 
     if (fields && fields.length) {
