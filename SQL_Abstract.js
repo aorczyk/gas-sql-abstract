@@ -342,10 +342,20 @@ function SqlAbstract(params) {
       if ('serializer' in table){
         Logger.log('serialize found');
         if (isObject(values)){
-          Logger.log('serializeing');
+          Logger.log('serializeing Object');
           for (var colName in table.serializer){
             if ('set' in table.serializer[colName] && colName in values){
               values[colName] = table.serializer[colName].set(values[colName]);
+            }
+          }
+        } else if (isArray(values)){
+          Logger.log('serializeing Array');
+
+          var colMap = getColumnIdMapping(table);
+
+          for (var colName in table.serializer){
+            if ('set' in table.serializer[colName] && values[colMap[colName]] != null){
+              values[colMap[colName]] = table.serializer[colName].set(values[colMap[colName]]);
             }
           }
         }
@@ -359,14 +369,15 @@ function SqlAbstract(params) {
     Logger.log('insert');
     
     if (isObject(opt.values)) {
-      Logger.log('inser object');
+      Logger.log('inser Object');
       appendRow(sheet, serialize(opt.values), cachedRows, getColumnIdMapping(table));
     } else if (isArray(opt.values)) {
+      Logger.log('inser Array');
       for (var n in opt.values) {
         var row = opt.values[n];
 
         if (isArray(row)) {
-          sheet.appendRow(row);
+          sheet.appendRow(serialize(row));
 
           if (cachedRows) {
             cachedRows.push(row);
@@ -583,6 +594,10 @@ function selectData_(sheet, where, groupBy, orderBy, responseType, fields, seria
     groupBy = undefined;
   }
 
+  if (headerRowNr == null) {
+    headerRowNr = 0
+  }
+
   // Measuring request time 1
   var _ts1ms = new Date().getTime();
 
@@ -595,7 +610,7 @@ function selectData_(sheet, where, groupBy, orderBy, responseType, fields, seria
   var headers = data[headerRowNr];
 
   var columnIdByName = getColumnIdByName(headers);
-  
+
   // Checking if fields there are in table.
   if (fields && fields.length) {
     for (var n in fields) {

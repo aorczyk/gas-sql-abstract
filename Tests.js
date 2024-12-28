@@ -27,6 +27,7 @@ function runAllTests(){
     runTest(tests[n]);
   }
   
+  Logger.log('All Tests OK')
   return true;
 }
 
@@ -47,13 +48,13 @@ var ssUrl = createTestSpreadsheet();
 Logger.log("Test spreadsheet: %s", ssUrl);
 
 function createTestSpreadsheet() {
-  var files = DriveApp.getFilesByName('SQL Abstract - TEST');
   var testFileId;
-  
-  while (files.hasNext()) {
-    var file = files.next();
-    testFileId = file.getId();
-  }
+
+  // var files = DriveApp.getFilesByName('SQL Abstract - TEST');
+  // while (files.hasNext()) {
+  //   var file = files.next();
+  //   testFileId = file.getId();
+  // }
   
   if (testFileId){
     ss = SpreadsheetApp.openById(testFileId);
@@ -411,6 +412,7 @@ function test_selectData(){
   // Test: get data as array
   (function(){
     var out = selectDataRows(testSheet, {}, [], ['K4']);
+
     if (! isArray(out[0])){
       throw "Output row is not Array"; 
     }
